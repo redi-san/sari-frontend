@@ -102,32 +102,24 @@ export default function Orders({ setPage }) {
         qrbox: 180,
       });
 
-      scanner.render(
-        (decodedText) => {
-          updateProduct(scanningIndex, "stock_id", decodedText); //Auto-fill the product ID
-          //const foundStock = stocks.find((s) => s.id.toString() === decodedText);
-          // Find stock details by ID
-          const foundStock = stocks.find(
-            (s) => s.barcode?.toString() === decodedText
-          );
-          if (foundStock) {
-            updateProduct(scanningIndex, "name", foundStock.name);
-            updateProduct(
-              scanningIndex,
-              "selling_price",
-              foundStock.selling_price
-            );
-            updateProduct(
-              scanningIndex,
-              "buying_price",
-              foundStock.buying_price
-            );
-          }
+scanner.render(
+  (decodedText) => {
+    const foundStock = stocks.find((s) => s.barcode?.toString() === decodedText);
 
-          setShowScanner(false);
-          setScanningIndex(null);
-          scanner.clear();
-        },
+    setProducts((prevProducts) => [
+      ...prevProducts,
+      {
+        stock_id: decodedText,
+        name: foundStock ? foundStock.name : "",
+        selling_price: foundStock ? foundStock.selling_price : "",
+        buying_price: foundStock ? foundStock.buying_price : "",
+        quantity: 1,
+      },
+    ]);
+
+    setShowScanner(false);
+    scanner.clear();
+  },
         (error) => {
           console.warn("Scanning error:", error);
         }
@@ -709,23 +701,8 @@ export default function Orders({ setPage }) {
 
 <div className={styles.buttonRow}>
 <button className={styles["add-product-btn"]}
-    onClick={() => {
-      if (products.length === 0) {
-        setProducts([
-          {
-            stock_id: "",
-            name: "",
-            quantity: "1",
-            selling_price: "",
-            buying_price: "",
-          },
-        ]);
-        setScanningIndex(0);
-      } else {
-        setScanningIndex(products.length - 1);
-      }
-      setShowScanner(true);
-    }}
+onClick={() => setShowScanner(true)}
+
   >
     Scan Product
   </button>

@@ -8,6 +8,9 @@ import logo from "../assets/sarimanagelogo.png";
 import hidePasswordIcon from "../assets/hidePassword.png";
 import showPasswordIcon from "../assets/showPassword.png";
 
+const BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+
+
 function SignUp() {
   const navigate = useNavigate();
 const [formData, setFormData] = useState({
@@ -60,12 +63,12 @@ const handleSubmit = async (e) => {
       displayName: `${formData.firstName} ${formData.lastName}`,
     });
 
-    await axios.post("http://localhost:5000/users", {
-      firebase_uid: user.uid,
-      name: formData.firstName,
-      last_name: formData.lastName,
-      email: user.email,
-    });
+await axios.post(`${BASE_URL}/users`, {
+  firebase_uid: user.uid,
+  name: formData.firstName,
+  last_name: formData.lastName,
+  email: user.email,
+});
 
     setPasswordError("");
     setShowModal(true);
