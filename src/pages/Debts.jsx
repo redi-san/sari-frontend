@@ -1,0 +1,1040 @@
+import { useState, useEffect, useRef } from "react";
+import styles from "../css/Debts.module.css";
+import deleteIcon from "../assets/deleteIcon.png";
+import { Html5Qrcode } from "html5-qrcode";
+import { getAuth } from "firebase/auth";
+import axios from "axios";
+
+  const BASE_URL = process.env.REACT_APP_API_URL;
+
+
+export default function Debts({ setPage }) {
+  const formatPeso = (amount) => {
+    const num = parseFloat(amount) || 0;
+    return `₱${num.toLocaleString("en-PH", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  };
+
+  const auth = getAuth();
+  const [activeTab, setActiveTab] = useState("unpaid");
+  const [search, setSearch] = useState("");
+  const [showModal, setShowModal] = useState(false);
+  const [showSecondModal, setShowSecondModal] = useState(false);
+  const [debtsList, setDebtsList] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [totals, setTotals] = useState({ total: 0, profit: 0 });
+  const [scanningIndex, setScanningIndex] = useState(null);
+  const [showScanner, setShowScanner] = useState(false);
+  const [selectedDebt, setSelectedDebt] = useState(null);
+  const [showKebabMenu, setShowKebabMenu] = useState(false);
+  const [status, setStatus] = useState("Unpaid");
+  const [editingDebtIndex, setEditingDebtIndex] = useState(null);
+  const [customer_name, setCustomerName] = useState("");
+  const [contact_number, setContactNumber] = useState("");
+  const [date, setDate] = useState(new Date().toLocaleDateString("en-CA"));
+  const [due_date, setDueDate] = useState("");
+  const [note, setNote] = useState("");
+  const [stocks, setStocks] = useState([]);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentDebtId, setPaymentDebtId] = useState(null);
+  const productsRef = useRef(products);
+  const scanningIndexRef = useRef(scanningIndex);
+
+  useEffect(() => {
+    productsRef.current = products;
+  }, [products]);
+
+  useEffect(() => {
+    scanningIndexRef.current = scanningIndex;
+  }, [scanningIndex]);
+
+  // Fetch stocks
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        try {
+          const res = await axios.get(`${BASE_URL}/stocks/user/${user.uid}`);
+          setStocks(res.data);
+        } catch (err) {
+          console.error("Error fetching user stocks:", err);
+        }
+      } else {
+        setStocks([]);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [auth]);
+
+  // Fetch debts
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        try {
+          const res = await axios.get(`${BASE_URL}/debts/user/${user.uid}`);
+
+          setDebtsList(res.data);
+        } catch (err) {
+          console.error("Error fetching debts:", err);
+        }
+      } else {
+        setDebtsList([]);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [auth]);
+
+  useEffect(() => {
+    if (!showScanner) return;
+
+    const html5QrCode = new Html5Qrcode("reader");
+
+    html5QrCode.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: 180 },
+      (decodedText) => {
+        const index = scanningIndexRef.current;
+
+        if (index !== null) {
+          const updated = [...productsRef.current];
+          updated[index].productId = decodedText;
+          setProducts(updated);
+        }
+
+        html5QrCode.stop();
+        setShowScanner(false);
+        setScanningIndex(null);
+      }
+    );
+
+    return () => {
+      html5QrCode.stop().catch(() => {});
+    };
+  }, [showScanner]);
+
+  const fetchDebts = async () => {
+    try {
+      const res = await axios.get(`${BASE_URL}/debts`);
+      setDebtsList(res.data);
+    } catch (err) {
+      console.error("Error fetching debts:", err);
+    }
+  };
+
+  const updateProduct = (index, field, value) => {
+    const newProducts = [...products];
+    newProducts[index][field] = value;
+
+    if (field === "name" || field === "productId") {
+      let match = null;
+
+      if (field === "name") {
+        match = stocks.find(
+          (s) => s.name.toLowerCase() === value.toLowerCase()
+        );
+      } else if (field === "productId") {
+        match = stocks.find(
+          (s) =>
+            s.barcode?.toString().toLowerCase() ===
+            value.toString().toLowerCase()
+        );
+      }
+
+      if (match) {
+        newProducts[index].name = match.name;
+        newProducts[index].stock_id = match.id;
+        newProducts[index].buyingPrice = match.buying_price || 0;
+        newProducts[index].sellingPrice = match.selling_price || 0;
+        newProducts[index].productId = match.barcode || "";
+      } else {
+        newProducts[index].stock_id = null;
+        newProducts[index].buyingPrice = "";
+        newProducts[index].sellingPrice = "";
+      }
+    }
+
+    setProducts(newProducts);
+    calculateTotals(newProducts);
+  };
+
+  const removeProduct = (index) => {
+    const newProducts = products.filter((_, i) => i !== index);
+    setProducts(newProducts);
+    calculateTotals(newProducts);
+  };
+
+  const calculateTotals = (productsArray) => {
+    let total = 0,
+      profit = 0;
+    productsArray.forEach((p) => {
+      const qty = parseFloat(p.quantity) || 0;
+      const sell = parseFloat(p.sellingPrice) || 0;
+      const buy = parseFloat(p.buyingPrice) || 0;
+      total += qty * sell;
+      profit += qty * (sell - buy);
+    });
+    setTotals({ total, profit });
+  };
+
+  const saveDebt = async () => {
+    const user = auth.currentUser;
+
+    if (editingDebtIndex !== null) {
+      const debtId = debtsList[editingDebtIndex].id;
+
+      const updatedDebt = {
+        customer_name,
+        contact_number,
+        date,
+        due_date,
+        note,
+        status,
+        total: totals.total,
+        profit: totals.profit,
+        products: products.map((p) => ({
+          stock_id: p.stock_id ?? null, // 🆕 include it
+          name: p.name,
+          quantity: p.quantity,
+          selling_price: p.sellingPrice ?? p.selling_price ?? 0,
+          buying_price: p.buyingPrice ?? p.buying_price ?? 0,
+          dateAdded: p.dateAdded || new Date().toISOString().split("T")[0],
+        })),
+      };
+
+      try {
+        await axios.put(`${BASE_URL}/debts/${debtId}`, updatedDebt);
+        alert("✅ Debt updated successfully!");
+        fetchDebts();
+        setShowModal(false);
+        setShowSecondModal(false);
+        setEditingDebtIndex(null);
+        resetForm();
+      } catch (err) {
+        console.error("Error updating debt:", err);
+        alert(err.response?.data?.error || "Failed to update debt.");
+      }
+
+      return;
+    }
+
+    const newDebt = {
+      user_id: user.uid,
+      customer_name,
+      contact_number,
+      date,
+      due_date,
+      note,
+      status,
+      total: totals.total,
+      profit: totals.profit,
+      products: products.map((p) => ({
+        name: p.name,
+        quantity: p.quantity,
+        selling_price: p.sellingPrice,
+        buying_price: p.buyingPrice,
+      })),
+    };
+
+    try {
+      await axios.post(`${BASE_URL}/debts`, newDebt);
+      alert("Debt created successfully!");
+      fetchDebts();
+      setShowSecondModal(false);
+      resetForm();
+    } catch (err) {
+      console.error("Error saving debt:", err);
+      alert(err.response?.data?.error || "Failed to save debt.");
+    }
+  };
+
+  const deleteDebt = async (id) => {
+    try {
+    await axios.delete(`${BASE_URL}/debts/${id}`);
+      fetchDebts();
+      setDebtsList(debtsList.filter((debt) => debt.id !== id));
+    } catch (err) {
+      console.error("Error deleting order:", err);
+    }
+  };
+
+  const recordPayment = async () => {
+    try {
+      if (!paymentAmount || parseFloat(paymentAmount) <= 0) {
+        alert("Enter a valid amount");
+        return;
+      }
+
+      const res = await axios.post(
+      `${BASE_URL}/debts/${paymentDebtId}/payment`,
+        { amount: parseFloat(paymentAmount) }
+      );
+
+      alert(res.data.message || "Payment recorded successfully!");
+
+      await fetchDebts();
+
+      setShowPaymentModal(false);
+      setSelectedDebt(null);
+    } catch (err) {
+      console.error("Error recording payment:", err);
+      alert(err.response?.data?.error || "Failed to record payment.");
+    }
+  };
+
+  const openPaymentModal = (debtId) => {
+    setPaymentDebtId(debtId);
+    setPaymentAmount("");
+    setShowPaymentModal(true);
+  };
+
+  const resetForm = () => {
+    setCustomerName("");
+    setContactNumber("");
+    //setDate(new Date().toISOString().split("T")[0]);
+    setDate(new Date().toLocaleDateString("en-CA"));
+    setNote("");
+    //setStatus("");
+    setStatus("Unpaid");
+    setProducts([]);
+    setTotals({ total: 0, profit: 0 });
+  };
+
+  const handleEnterKey = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+
+      const form = e.target.form;
+      const index = Array.prototype.indexOf.call(form, e.target);
+      const next = form.elements[index + 1];
+
+      if (next) {
+        if (next.type !== "button" && next.type !== "submit") {
+          next.focus();
+        } else {
+          const submitBtn = form.querySelector("button[type='submit']");
+          if (submitBtn) submitBtn.click();
+        }
+      } else {
+        form.requestSubmit();
+      }
+    }
+  };
+
+  return (
+    <div>
+      {/* Topbar */}
+      <div className={styles.topbar}>
+        <h2>Transactions</h2>
+      </div>
+
+      {/* Sidebar */}
+
+      {/* Page Header */}
+      <main className={styles.mainContent}>
+        <div className={styles["page-header"]}>
+          <input
+            type="text"
+            placeholder="Search Debts"
+            className={styles["search-input"]}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          {/*<h1>Debts</h1>*/}
+        </div>
+
+        <div className={styles.tabs}>
+          <button
+            className={`${styles.tabButton} ${
+              activeTab === "unpaid" ? styles.activeTab : ""
+            }`}
+            onClick={() => setActiveTab("unpaid")}
+          >
+            Unpaid
+          </button>
+
+          <button
+            className={`${styles.tabButton} ${
+              activeTab === "paid" ? styles.activeTab : ""
+            }`}
+            onClick={() => setActiveTab("paid")}
+          >
+            Paid
+          </button>
+        </div>
+
+        {/* Debts Table */}
+        <div className={styles["table-container"]}>
+          <table className={styles["debts-table"]}>
+            <thead>
+              <tr>
+                <th>Customer</th>
+                {/*<th>Contact</th>*/}
+                <th>Date</th>
+                {/*<th>Due Date</th>*/}
+                <th>Total</th>
+                {/*<th>Balance</th>*/}
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {debtsList
+                .filter((debt) => {
+                  if (activeTab === "unpaid") {
+                    return (
+                      debt.status === "Unpaid" || debt.status === "Overdue"
+                    );
+                  }
+                  if (activeTab === "paid") {
+                    return debt.status === "Paid";
+                  }
+                  return true;
+                })
+
+                .filter((debt) =>
+                  debt.customer_name
+                    .toLowerCase()
+                    .includes(search.toLowerCase())
+                )
+
+                .map((debt, index) => (
+                  <tr key={index} onClick={() => setSelectedDebt(debt)}>
+                    <td>{debt.customer_name}</td>
+                    <td>{debt.date}</td>
+                    <td>{formatPeso(debt.total)}</td>
+
+                    <td>
+                      <span
+                        style={{
+                          color:
+                            debt.status === "Paid"
+                              ? "green"
+                              : debt.status === "Overdue"
+                              ? "red"
+                              : "orange",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        {debt.status || "Unpaid"}
+                      </span>
+                    </td>
+
+                    <td>
+                      <button
+                        className={styles["table-delete-btn"]}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteDebt(debt.id);
+                          const filtered = debtsList.filter(
+                            (_, i) => i !== index
+                          );
+                          setDebtsList(filtered);
+                        }}
+                      >
+                        <img
+                          src={deleteIcon}
+                          alt="Delete"
+                          style={{ width: "18px", height: "18px" }}
+                        />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Floating Button */}
+        {/*<button
+          className={styles["create-button"]}
+          onClick={() => {
+            setEditingDebtIndex(null);
+            resetForm();
+            setShowModal(true);
+          }}
+        >
+          +
+        </button>*/}
+
+        {/* Add Debt Modal */}
+        {showModal && (
+          <div className={styles.modal}>
+            <div className={styles["modal-content"]}>
+              <h2>{editingDebtIndex !== null ? "Edit Debt" : "Add Debt"}</h2>
+              <p>Enter customer details</p>
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (editingDebtIndex !== null) {
+                    saveDebt();
+                  } else {
+                    setShowModal(false);
+                    setShowSecondModal(true);
+                  }
+                }}
+              >
+                {/* Form Inputs */}
+                <div className={styles["form-group"]}>
+                  <input
+                    type="text"
+                    value={customer_name}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    onKeyDown={handleEnterKey}
+                    placeholder=" "
+                    required
+                  />
+                  <label>Customer Name</label>
+                </div>
+
+                <div className={styles["form-group"]}>
+                  <input
+                    type="text"
+                    value={contact_number}
+                    onChange={(e) => setContactNumber(e.target.value)}
+                    onKeyDown={handleEnterKey}
+                    placeholder=" "
+                  />
+                  <label>Contact Number</label>
+                </div>
+
+                <div className={styles["form-row"]}>
+                  <div className={styles["form-group"]}>
+                    <input
+                      type="date"
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                      onKeyDown={handleEnterKey}
+                      placeholder=" "
+                      required
+                    />
+                    <label>Date</label>
+                  </div>
+                  <div className={styles["form-group"]}>
+                    <input
+                      type="date"
+                      value={due_date}
+                      onChange={(e) => setDueDate(e.target.value)}
+                      onKeyDown={handleEnterKey}
+                      placeholder=" "
+                    />
+                    <label>Due Date</label>
+                  </div>
+                </div>
+
+                <div className={styles["form-group"]}>
+                  <textarea
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    onKeyDown={handleEnterKey}
+                    placeholder=" "
+                    rows="3"
+                    className={styles.textarea}
+                  />
+                  <label>Note</label>
+                </div>
+
+                {/* Status Dropdown
+        <div className={styles["form-group"]}>
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+            className={styles["status-select"]}
+          >
+            <option value="Unpaid">Unpaid</option>
+            <option value="Overdue">Overdue</option>
+            <option value="Paid">Paid</option>
+          </select>
+          <label></label>
+        </div> */}
+
+                <div className={styles["modal-actions"]}>
+                  <button
+                    type="button"
+                    className={styles.Cancel}
+                    onClick={() => {
+                      setShowModal(false);
+                      resetForm();
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button type="submit" className={styles.Next}>
+                    {editingDebtIndex !== null ? "Save" : "Next"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Products Modal*/}
+        {showSecondModal && (
+          <div className={styles.modal}>
+            <div
+              className={`${styles["modal-content"]} ${styles["modal-second"]}`}
+            >
+              <h2>Add Products</h2>
+              {products.map((product, index) => (
+                <div className={styles["product-entry"]} key={index}>
+                  <div style={{ position: "relative" }}>
+                    <input
+                      type="text"
+                      placeholder="Product Name"
+                      value={product.name}
+                      onChange={(e) =>
+                        updateProduct(index, "name", e.target.value)
+                      }
+                      onFocus={() => setActiveSuggestionIndex(index)}
+                      onBlur={() =>
+                        setTimeout(() => setActiveSuggestionIndex(null), 150)
+                      }
+                    />
+
+                    {activeSuggestionIndex === index &&
+                      product.name &&
+                      stocks.filter((s) =>
+                        s.name
+                          .toLowerCase()
+                          .startsWith(product.name.toLowerCase())
+                      ).length > 0 && (
+                        <ul
+                          style={{
+                            position: "absolute",
+                            top: "100%",
+                            left: 0,
+                            width: "100%",
+                            background: "white",
+                            border: "1px solid #ccc",
+                            borderRadius: "8px",
+                            maxHeight: "150px",
+                            overflowY: "auto",
+                            listStyle: "none",
+                            margin: 0,
+                            padding: 0,
+                            zIndex: 1000,
+                          }}
+                        >
+                          {stocks
+                            .filter((s) =>
+                              s.name
+                                .toLowerCase()
+                                .startsWith(product.name.toLowerCase())
+                            )
+                            .map((s, i) => (
+                              <li
+                                key={i}
+                                style={{
+                                  padding: "8px 12px",
+                                  cursor: "pointer",
+                                  textAlign: "left",
+                                }}
+                                onMouseDown={(e) => e.preventDefault()} // prevent blur
+                                onClick={() => {
+                                  updateProduct(index, "name", s.name);
+                                  updateProduct(
+                                    index,
+                                    "sellingPrice",
+                                    s.selling_price
+                                  );
+                                  updateProduct(
+                                    index,
+                                    "buyingPrice",
+                                    s.buying_price
+                                  );
+                                  //updateProduct(index, "stock_id", s.barcode);
+                                  updateProduct(index, "stock_id", s.id);
+                                  setActiveSuggestionIndex(null);
+                                }}
+                              >
+                                {s.name}
+                              </li>
+                            ))}
+                        </ul>
+                      )}
+                  </div>
+
+                  <input
+                    type="text"
+                    placeholder="Product ID"
+                    value={product.productId || ""}
+                    onChange={(e) =>
+                      updateProduct(index, "productId", e.target.value)
+                    }
+                  />
+
+                  <div className={styles["product-row"]}>
+                    <input
+                      type="number"
+                      placeholder="Quantity"
+                      value={product.quantity}
+                      onChange={(e) =>
+                        updateProduct(index, "quantity", e.target.value)
+                      }
+                    />
+                    <input
+                      type="number"
+                      placeholder="Selling Price"
+                      value={product.sellingPrice}
+                      onChange={(e) =>
+                        updateProduct(index, "sellingPrice", e.target.value)
+                      }
+                    />
+                    {/*<input
+                    type="number"
+                    placeholder="Buying Price"
+                    value={product.buyingPrice}
+                    onChange={(e) =>
+                      updateProduct(index, "buyingPrice", e.target.value)
+                    }
+                  /> */}
+                  </div>
+
+                  {/*<input
+                  type="date"
+                  placeholder="Date Added"
+                  value={product.dateAdded || ""}
+                  onChange={(e) =>
+                    updateProduct(index, "dateAdded", e.target.value)
+                  }
+                /> */}
+
+                  {/* Buttons row */}
+                  <div className={styles["product-actions"]}>
+                    <button
+                      className={styles["delete-product-btn"]}
+                      onClick={() => removeProduct(index)}
+                    >
+                      Remove
+                    </button>
+                    <button
+                      className={styles["scan-product-btn"]}
+                      onClick={() => {
+                        setScanningIndex(index);
+                        setShowScanner(true);
+                      }}
+                    >
+                      Scan
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              {showScanner && (
+                <div className={styles.modal}>
+                  <div className={styles["modal-content"]}>
+                    <h2>Scan Barcode</h2>
+                    <div
+                      id="reader"
+                      style={{ width: "300px", margin: "auto" }}
+                    ></div>
+                    <button
+                      className={styles.Cancel}
+                      onClick={() => {
+                        setShowScanner(false);
+                        setScanningIndex(null);
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <button
+                className={styles["add-product-btn"]}
+                onClick={() =>
+                  setProducts([
+                    ...products,
+                    {
+                      name: "",
+                      stock_id: null,
+                      productId: "",
+                      quantity: "",
+                      selling_price: "",
+                      buying_price: "",
+                      dateAdded: new Date().toISOString().split("T")[0], // auto-fill current date
+                    },
+                  ])
+                }
+              >
+                + Add Product
+              </button>
+
+              <div className={styles.totals}>
+                <input
+                  type="text"
+                  readOnly
+                  value={`Total: ${formatPeso(totals.total)}`}
+                />
+                <input
+                  type="text"
+                  readOnly
+                  value={`Profit: ${formatPeso(totals.profit)}`}
+                />
+              </div>
+
+              <div className={styles["modal-actions"]}>
+                <button
+                  className={styles.Cancel}
+                  onClick={() => {
+                    setShowSecondModal(false);
+                  }}
+                >
+                  Back
+                </button>
+                <button className={styles.Next} onClick={saveDebt}>
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Receipt Modal */}
+        {selectedDebt && (
+          <div className={styles.modal} onClick={() => setSelectedDebt(null)}>
+            <div
+              className={`${styles["modal-content"]} ${styles["receipt-modal"]}`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className={styles["receipt-header-top"]}>
+                <h2>Debt Receipt</h2>
+                {selectedDebt.status !== "Paid" && (
+                  <div className={styles["receipt-kebab-container"]}>
+                    <button
+                      className={styles["receipt-kebab"]}
+                      onClick={() => setShowKebabMenu((prev) => !prev)}
+                    >
+                      ⋮
+                    </button>
+
+                    {showKebabMenu && (
+                      <div className={styles["kebab-menu"]}>
+                        <button
+                          onClick={() => {
+                            alert("Reminder sent to customer!");
+                            setShowKebabMenu(false);
+                          }}
+                        >
+                          Remind Customer
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditingDebtIndex(
+                              debtsList.indexOf(selectedDebt)
+                            );
+                            setCustomerName(selectedDebt.customer_name);
+                            setContactNumber(selectedDebt.contact_number);
+                            setDate(selectedDebt.date);
+                            setDueDate(selectedDebt.due_date);
+                            setNote(selectedDebt.note || "");
+                            setStatus(selectedDebt.status || "Unpaid");
+                            setProducts(
+                              (selectedDebt.products || []).map((p) => ({
+                                ...p,
+                                productId:
+                                  p.productId || p.stock_id || p.id || "",
+                                name: p.name || "",
+                                quantity: p.quantity || "",
+                                sellingPrice:
+                                  p.selling_price ?? p.sellingPrice ?? 0,
+                                buyingPrice:
+                                  p.buying_price ?? p.buyingPrice ?? 0,
+                                dateAdded: p.dateAdded || p.date_added || "",
+                                stock_id: p.stock_id ?? null,
+                              }))
+                            );
+
+                            setTotals({
+                              total: selectedDebt.total || 0,
+                              profit: selectedDebt.profit || 0,
+                            });
+                            setSelectedDebt(null);
+                            setShowModal(true);
+                            setShowSecondModal(false);
+                            setShowKebabMenu(false);
+                          }}
+                        >
+                          Edit Debt Info
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              {selectedDebt.image && (
+                <img
+                  src={URL.createObjectURL(selectedDebt.image)}
+                  alt="Customer"
+                  className={styles["preview-image"]}
+                />
+              )}
+              <p>
+                <strong>Customer:</strong> {selectedDebt.customer_name}
+              </p>
+              <p>
+                <strong>Contact:</strong> {selectedDebt.contact_number}
+              </p>
+
+              <p>
+                <strong>Date:</strong> {selectedDebt.date}
+              </p>
+              <p>
+                <strong>Due Date:</strong> {selectedDebt.due_date}
+              </p>
+
+              <p>
+                <strong>Note:</strong> {selectedDebt.note}
+              </p>
+
+              <p>
+                <strong>Status:</strong>{" "}
+                <span
+                  style={{
+                    color:
+                      selectedDebt.status === "Paid"
+                        ? "green"
+                        : selectedDebt.status === "Overdue"
+                        ? "red"
+                        : "orange",
+                    fontWeight: "bold",
+                  }}
+                >
+                  {selectedDebt.status}
+                </span>
+              </p>
+
+              <div className={styles["receipt-products"]}>
+                {/* Header row */}
+                <div className={styles["receipt-header"]}>
+                  <span>Product</span>
+                  <span>Quantity</span>
+                  <span>Sell</span>
+                  <span>Buy</span>
+                  <span>Date Added</span>
+                </div>
+
+                {/* Product rows */}
+                {selectedDebt.products.map((p, idx) => (
+                  <div key={idx} className={styles["receipt-row"]}>
+                    <span>{p.name || "-"}</span>
+                    <span>{p.quantity || "-"}</span>
+                    <span>
+                      {p.selling_price !== undefined && p.selling_price !== null
+                        ? formatPeso(p.selling_price)
+                        : "-"}
+                    </span>
+                    <span>
+                      {p.buying_price !== undefined && p.buying_price !== null
+                        ? formatPeso(p.buying_price)
+                        : "-"}
+                    </span>
+
+                    <span>{p.dateAdded || "-"}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className={styles["receipt-totals"]}>
+                <p>
+                  <strong>Total:</strong> {formatPeso(selectedDebt.total)}
+                </p>
+                <p>
+                  <strong>Profit:</strong> {formatPeso(selectedDebt.profit)}
+                </p>
+
+                <p>
+                  <strong>Current Balance:</strong>{" "}
+                  {formatPeso(
+                    selectedDebt.total - (selectedDebt.total_paid || 0)
+                  )}
+                </p>
+              </div>
+
+              {/* Action buttons */}
+              {selectedDebt.status !== "Paid" && (
+                <div className={styles["modal-actions"]}>
+                  <button
+                    className={styles.Edit}
+                    onClick={() => {
+                      setEditingDebtIndex(debtsList.indexOf(selectedDebt));
+                      setCustomerName(selectedDebt.customer_name);
+                      setContactNumber(selectedDebt.contact_number);
+                      setDate(selectedDebt.date);
+                      setDueDate(selectedDebt.due_date);
+                      setNote(selectedDebt.note || "");
+                      setStatus(selectedDebt.status || "Unpaid");
+                      setProducts(
+                        (selectedDebt.products || []).map((p) => ({
+                          ...p,
+                          productId: p.productId || p.stock_id || p.id || "",
+                          name: p.name || "",
+                          quantity: p.quantity || "",
+                          sellingPrice: p.selling_price ?? p.sellingPrice ?? 0,
+                          buyingPrice: p.buying_price ?? p.buyingPrice ?? 0,
+                          dateAdded: p.dateAdded || p.date_added || "",
+                          stock_id: p.stock_id ?? null,
+                        }))
+                      );
+                      setTotals({
+                        total: selectedDebt.total || 0,
+                        profit: selectedDebt.profit || 0,
+                      });
+                      setSelectedDebt(null);
+                      setShowModal(false);
+                      setShowSecondModal(true);
+                    }}
+                  >
+                    Edit
+                  </button>
+
+                  <button
+                    className={styles.Full}
+                    onClick={() => openPaymentModal(selectedDebt.id)}
+                  >
+                    Payment
+                  </button>
+                </div>
+              )}
+
+              {showPaymentModal && (
+                <div className={styles.modal}>
+                  <div
+                    className={styles["modal-content"]}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <h2>Enter Payment Amount</h2>
+                    <input
+                      type="text"
+                      class="enter-payment-input"
+                      placeholder="Enter Payment Amount"
+                      value={paymentAmount}
+                      onChange={(e) => setPaymentAmount(e.target.value)}
+                    />
+                    <div className={styles["modal-actions"]}>
+                      <button
+                        className={styles.Cancel}
+                        onClick={() => setShowPaymentModal(false)}
+                      >
+                        Cancel
+                      </button>
+                      <button className={styles.Next} onClick={recordPayment}>
+                        Submit
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}

@@ -1,0 +1,210 @@
+import { useState, useEffect } from "react";
+import styles from "../css/Settings.module.css";
+import { useNavigate } from "react-router-dom";
+import { getAuth, signOut } from "firebase/auth";
+import axios from "axios";
+
+import BottomNav from "../components/BottomNav";
+
+    const BASE_URL = process.env.REACT_APP_API_URL;
+
+
+export default function Settings() {
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [userData, setUserData] = useState(null);
+  const [editedData, setEditedData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+  });
+
+  const navigate = useNavigate();
+  const auth = getAuth();
+
+
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
+
+  // ✅ Fetch user data from backend
+  useEffect(() => {
+    const fetchUser = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      
+      try {
+      const res = await axios.get(`${BASE_URL}/users/${user.uid}`);
+        setUserData(res.data);
+        setEditedData({
+          firstName: res.data.name || "",
+          lastName: res.data.last_name || "",
+          email: res.data.email || "",
+        });
+      } catch (err) {
+        console.error("Error fetching user:", err);
+      }
+    };
+    fetchUser();
+  }, [auth]);
+
+  const handleEditProfile = () => {
+    setEditingProfile(true);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingProfile(false);
+  };
+
+  const handleChange = (e) => {
+    const { id, value } = e.target;
+    setEditedData({ ...editedData, [id]: value });
+  };
+
+const handleSave = async () => {
+  try {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    await axios.put(`${BASE_URL}/users/${user.uid}`, {
+      name: editedData.firstName,
+      last_name: editedData.lastName,
+      email: editedData.email,
+    });
+
+    // Update local state after successful save
+    setUserData({
+      ...userData,
+      name: editedData.firstName,
+      last_name: editedData.lastName,
+      email: editedData.email,
+    });
+
+    setEditingProfile(false);
+  } catch (err) {
+    console.error("Failed to update profile:", err);
+  }
+};
+
+
+  return (
+    <div>
+      {/* Topbar */}
+      <div className={styles.topbar}>
+        <h2>Settings</h2>
+      </div>
+
+      {/* Main Content */}
+      <div className={styles.main}>
+        <h1 className={styles.pageTitle}>Settings</h1>
+
+        {/* Profile Card */}
+        <div className={styles.card}>
+          <img
+            src="https://via.placeholder.com/100"
+            alt="Profile"
+            className={styles.profilePic}
+          />
+          <h3 className={styles.username}>
+            {userData ? `${userData.name} ${userData.last_name}` : "Loading..."}
+          </h3>
+          <p className={styles.email}>{userData?.email}</p>
+          <div className={styles.buttonRow}>
+            <button className={styles.btn}>Change Photo</button>
+            <button className={styles.btn} onClick={handleEditProfile}>
+              Edit Profile
+            </button>
+          </div>
+        </div>
+
+        {/* ✅ Conditional Rendering */}
+        {!editingProfile ? (
+          <>
+            {/* App Settings Card */}
+            <div className={`${styles.card} ${styles.clickable}`}>
+              <div className={styles.cardHeader}>
+                <span>App Settings</span>
+              </div>
+              <p>Customize your app experience and notifications</p>
+            </div>
+
+            {/* Help and Support Card */}
+            <div className={`${styles.card} ${styles.clickable}`}>
+              <div className={styles.cardHeader}>
+                <span>Help and Support</span>
+              </div>
+              <p>
+                Email: support@sarimanage.com <br />
+                Phone: +63 900 000 0000
+              </p>
+            </div>
+
+            {/* Logout Button */}
+            <button className={styles.logoutBtn} onClick={handleLogout}>
+              Log Out
+            </button>
+          </>
+        ) : (
+          <>
+            {/* ✅ Edit Profile Card */}
+            <div className={`${styles.card} ${styles.editProfileCard}`}>
+              <div className={styles.cardHeader}>
+                <span>Edit Profile</span>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>First Name</label>
+                <input
+                  id="firstName"
+                  type="text"
+                  value={editedData.firstName}
+                  onChange={handleChange}
+                  placeholder="Enter first name"
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Last Name</label>
+                <input
+                  id="lastName"
+                  type="text"
+                  value={editedData.lastName}
+                  onChange={handleChange}
+                  placeholder="Enter last name"
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Email</label>
+                <input
+                  id="email"
+                  type="email"
+                  value={editedData.email}
+                  onChange={handleChange}
+                  placeholder="Enter email address"
+                />
+              </div>
+
+              <div className={styles.editButtonRow}>
+                <button className={styles.saveBtn} onClick={handleSave}>
+                  Save Changes
+                </button>
+                <button className={styles.cancelBtn} onClick={handleCancelEdit}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        <BottomNav />
+      </div>
+    </div>
+  );
+}

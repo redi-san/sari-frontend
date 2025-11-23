@@ -1,0 +1,166 @@
+
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  /* background: #f8f9fa; */
+}
+
+.card {
+  background: #fff;
+  padding: 2rem;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 350px;
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.logo {
+  margin-bottom: 1rem;
+}
+
+/*.logo img {
+  width: 60px;
+  height: auto;
+  margin-bottom: 0.5rem;
+}*/
+
+.title {
+  font-size: 1.8rem;
+  margin-bottom: 0.5rem;
+}
+
+.subtitle {
+  color: #666;
+  margin-bottom: 1.5rem;
+}
+
+.inputGroup {
+  margin-bottom: 1rem;
+  text-align: left;
+}
+
+.inputGroup label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 0.3rem;
+}
+
+.inputGroup input {
+  width: 100%;
+  padding: 0.6rem;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  outline: none;
+  transition: border 0.2s;
+}
+
+.inputGroup input:focus {
+  border-color: #007bff;
+}
+
+.passwordGroup .hint {
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.passwordWrapper {
+  display: flex;
+  align-items: center;
+}
+
+.togglePassword {
+  margin-left: 0.5rem;
+  cursor: pointer;
+  font-size: 1.2rem;
+}
+
+.errorMessage {
+  color: red;
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+}
+
+.btn {
+  background: #ffcc00;
+  border: none;
+  padding: 0.7rem 1rem;
+  width: 100%;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 1rem;
+}
+
+.switch {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+}
+
+.switch a {
+  color: #007bff;
+  text-decoration: none;
+}
+
+.switch a:hover {
+  text-decoration: underline;
+}
+
+/* Modal */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modalContent {
+  background: #fff;
+  padding: 20px;
+  border-radius: 10px;
+  text-align: center;
+  width: 300px;
+}
+
+.modalActions {
+  margin-top: 15px;
+}
+
+.modalActions button {
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.modalActions .cancel {
+  margin-right: 10px;
+  border: 1px solid #ccc;
+  background: #fff;
+}
+
+.modalActions .continue {
+  background: #ffcc00;
+  border: none;
+  font-weight: bold;
+}
+
+.logoImage {
+  width: 80px;
+  height: auto;
+  margin-bottom: 8px;
+}
+
+
+.passwordIcon {
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  user-select: none;
+}

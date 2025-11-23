@@ -1,0 +1,264 @@
+.container {
+  width: 100%;
+  max-width: 400px;
+  padding: 20px;
+  display: flex;
+  justify-content: center; 
+  align-items: center;   
+  min-height: 100vh;   
+  margin: 0 auto;   
+}
+
+
+.card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 30px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+  text-align: center;
+  /* width: 200px; */
+  width: 500px;
+  margin: 16px;
+}
+
+.logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.logo img {
+  width: 100px;
+  height: 100px;
+  margin-bottom: 0px;
+  border-radius: 25%;
+}
+
+.logo h2 {
+  font-size: 20px;
+  font-weight: bold;
+  color: #ff9900;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: bold;
+  color: #444;
+  margin-bottom: 5px;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: #777;
+  margin-bottom: 20px;
+}
+
+.inputGroup {
+  text-align: left;
+  margin-bottom: 15px;
+}
+
+.inputGroup label {
+  display: block;
+  font-size: 16px;
+  font-weight: bold;
+  color: #0d0d0d;
+  margin-bottom: 6px;
+}
+
+.inputGroup input {
+  width: 100%;
+  box-sizing: border-box; 
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+
+.inputGroup input:focus {
+  outline: none;
+  border-color: #ffcc00;
+  box-shadow: 0 0 5px rgba(255, 204, 0, 0.4);
+}
+
+/* .passwordGroup {
+   optional extra password field styles 
+} */
+
+.passwordWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.passwordWrapper input {
+  width: 100%;
+  padding-right: 40px;
+}
+
+.togglePassword {
+  position: absolute;
+  right: 12px;
+  cursor: pointer;
+  font-size: 16px;
+  color: #777;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.errorMessage {
+  color: red;
+  font-size: 13px;
+  margin-top: -15px;
+  margin-bottom: 15px;
+  display: none; 
+}
+
+.btn {
+  width: 100%;
+  padding: 12px;
+  background: #ffcc00;
+  color: #333;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: 0.3s;
+}
+
+.btn:hover {
+  background: #ffdb4d;
+}
+
+.forgot {
+  margin-top: 10px;
+}
+
+.forgot a {
+  color: #f57c00;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.forgot a:hover {
+  text-decoration: underline;
+}
+
+.switch {
+  margin-top: 15px;
+  font-size: 14px;
+  color: #666;
+}
+
+.switch a {
+  color: #ff9900;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.switch a:hover {
+  text-decoration: underline;
+}
+
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 999;
+  inset: 0;
+  background-color: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modalContent {
+  background: #fff;
+  padding: 30px 40px;
+  border-radius: 16px;
+  text-align: center;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+  animation: fadeIn 0.4s ease-in-out;
+}
+
+.modalContent h2 {
+  font-size: 20px;
+  font-weight: bold;
+  color: #444;
+}
+
+.passwordWrapper {
+  position: relative;
+}
+
+.passwordWrapper input {
+  width: 100%;
+  padding-right: 35px; 
+}
+
+.togglePassword {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  cursor: pointer;
+}
+
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 600px) {
+  html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    /* overflow: hidden; /* prevents any scroll*/
+  }
+
+  .container {
+    width: 100vw; 
+    height: 100vh;
+    max-width: none !important;
+    margin: 0;
+    padding: 0;
+    background: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .card {
+    width: 100vw;
+    height: 100vh;
+    margin: 0;
+    padding: 30px 20px;
+    border-radius: 0;
+    box-shadow: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    background: #fff;
+  }
+
+  .modalContent {
+    width: 100vw;
+    height: 100vh;
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 20px;
+    background: #fff;
+  }
+}
+
+
+
