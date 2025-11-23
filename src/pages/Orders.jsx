@@ -703,36 +703,53 @@ export default function Orders({ setPage }) {
                       Remove
                     </button>
 
-                    <button
-                      className={styles["scan-product-btn"]}
-                      onClick={() => {
-                        setScanningIndex(index);
-                        setShowScanner(true);
-                      }}
-                    >
-                      Scan
-                    </button>
                   </div>
                 </div>
               ))}
 
-              <button
-                className={styles["add-product-btn"]}
-                onClick={() =>
-                  setProducts([
-                    ...products,
-                    {
-                      stock_id: "",
-                      name: "",
-                      quantity: "1",
-                      selling_price: "",
-                      buying_price: "",
-                    },
-                  ])
-                }
-              >
-                + Add Product
-              </button>
+<div className={styles.buttonRow}>
+<button className={styles["add-product-btn"]}
+    onClick={() => {
+      if (products.length === 0) {
+        setProducts([
+          {
+            stock_id: "",
+            name: "",
+            quantity: "1",
+            selling_price: "",
+            buying_price: "",
+          },
+        ]);
+        setScanningIndex(0);
+      } else {
+        setScanningIndex(products.length - 1);
+      }
+      setShowScanner(true);
+    }}
+  >
+    Scan Product
+  </button>
+
+  <button
+    className={styles["add-product-btn"]}
+    onClick={() =>
+      setProducts([
+        ...products,
+        {
+          stock_id: "",
+          name: "",
+          quantity: "1",
+          selling_price: "",
+          buying_price: "",
+        },
+      ])
+    }
+  >
+    + Add Product
+  </button>
+</div>
+
+
 
               {showScanner && (
                 <div className={styles.scannerModal}>
