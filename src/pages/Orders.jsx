@@ -8,7 +8,6 @@ import BottomNav from "../components/BottomNav";
 import AddDebtModal from "../components/AddDebtModal";
 import Debts from "./Debts"; // reuse your component
 
-
 const BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 export default function Orders({ setPage }) {
@@ -26,7 +25,7 @@ export default function Orders({ setPage }) {
   const [stocks, setStocks] = useState([]);
   const [showScanner, setShowScanner] = useState(false);
   // const [scanningIndex, setScanningIndex] = useState(null);
-  const [scanningIndex] = useState(null); // keep value, discard setter
+  //const [scanningIndex] = useState(null); // keep value, discard setter
   const [filterDate, setFilterDate] = useState(new Date());
   const [showAll, setShowAll] = useState(false);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(null);
@@ -35,7 +34,6 @@ export default function Orders({ setPage }) {
   const [showDebtModal, setShowDebtModal] = useState(false);
 
   const scannerRef = useRef(null);
-
 
   useEffect(() => {
     const auth = getAuth();
@@ -99,17 +97,20 @@ export default function Orders({ setPage }) {
   );
 
   useEffect(() => {
-    if (showScanner) {
-      scannerRef.current = new Html5QrcodeScanner("order-barcode-reader", {
-        fps: 10,
-        qrbox: 180,
-      });
+  if (!showScanner) return;
 
-      // Delay render until DOM is ready
-setTimeout(() => {
-  if (!document.getElementById("order-barcode-reader")) return;
+  const elementId = "order-barcode-reader";
 
-  scannerRef.current.render(
+  // Make sure the element exists before initializing
+  if (!document.getElementById(elementId)) return;
+
+  const scanner = new Html5QrcodeScanner(elementId, {
+    fps: 10,
+    qrbox: 180,
+  });
+  scannerRef.current = scanner;
+
+  scanner.render(
     (decodedText) => {
       const foundStock = stocks.find(
         (s) => s.barcode?.toString() === decodedText
@@ -126,28 +127,27 @@ setTimeout(() => {
             quantity: 1,
           },
         ];
-
-        // 🔥 Update totals & profit immediately
         calculateTotals(newProducts);
-
         return newProducts;
       });
 
-      // stop scanner
-      scannerRef.current.clear().catch(() => {});
+      // Clear scanner after successful scan
+      scanner.clear().catch(() => {});
+      scannerRef.current = null;
       setShowScanner(false);
     },
-
-    (error) => console.warn("Scan error:", error)
-  );
-}, 50);
-
-
-      return () => {
-        scannerRef.current?.clear().catch(() => {});
-      };
+    (error) => {
+      console.warn("Scan error:", error);
     }
-  }, [showScanner, stocks]);
+  );
+
+  // Cleanup if component unmounts or showScanner becomes false
+  return () => {
+    scannerRef.current?.clear().catch(() => {});
+    scannerRef.current = null;
+  };
+}, [showScanner, stocks]);
+
 
   const fetchOrders = async () => {
     const user = auth.currentUser;
