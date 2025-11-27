@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import styles from "../css/Stocks.module.css";
 import axios from "axios";
 import { getAuth } from "firebase/auth";
-import bellIcon from "../assets/bell.png";
-import bellAlertIcon from "../assets/bellalert.png";
+//import bellIcon from "../assets/bell.png";
+//import bellAlertIcon from "../assets/bellalert.png";
 
 import barcodeIcon from "../assets/barcode.png";
 import { Html5QrcodeScanner } from "html5-qrcode";
