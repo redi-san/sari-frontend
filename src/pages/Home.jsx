@@ -9,6 +9,9 @@ import ProfitsIcon from "../assets/ProfitsIcon.png";
 import TotalDebtsIcon from "../assets/TotalDebtsIcon.png";
 import LowStockIcon from "../assets/LowStockIcon.png";
 
+import NotificationBell from "../components/NotificationBell";
+
+
     const BASE_URL = process.env.REACT_APP_API_URL; // Use live backend URL
 
 
@@ -88,9 +91,10 @@ useEffect(() => {
 
   return (
     <div>
-      <div className={styles.topbar}>
-        <h2>Sari Manage</h2>
-      </div>
+<div className={styles.topbar}>
+  <h2>Sari Manage</h2>
+  <NotificationBell />
+</div>
 
       <div className={styles.main}>
         <h2 className={styles.sectionTitle}>Overview</h2>

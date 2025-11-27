@@ -69,9 +69,10 @@
 
 .topbar h2 {
   margin: 0;
-  font-size: 20px;
+  font-size: 32px;
   font-weight: bold;
   color: #ffcc00;
+     -webkit-text-stroke: 1px #333; /* dark stroke */
 }
 
 .hamburger {
@@ -896,3 +897,41 @@ body {
 }
 
 
+/* Filter Buttons Container */
+.filterBar {
+  display: flex;
+  justify-content: center; /* center the buttons */
+  align-items: center;
+  gap: 12px; /* spacing between buttons */
+  margin: 20px 0;
+  flex-wrap: wrap; /* wrap on smaller screens */
+}
+
+/* General button styling */
+.filterBar button {
+  padding: 10px 20px;
+  border: 2px solid #ffcc00;
+  border-radius: 12px;
+  background-color: #fff;
+  color: #333;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 100px; /* uniform width */
+  text-align: center;
+}
+
+/* Hover effect */
+.filterBar button:hover {
+  background-color: #ffcc00;
+  color: #fff;
+  transform: translateY(-2px);
+}
+
+/* Active filter */
+.filterBar button.activeFilter {
+  background-color: #ffcc00;
+  color: #fff;
+  border-color: #daae00;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}

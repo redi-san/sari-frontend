@@ -10,8 +10,23 @@ import { Html5QrcodeScanner } from "html5-qrcode";
 
 import BottomNav from "../components/BottomNav";
 
-  const BASE_URL = process.env.REACT_APP_API_URL; // e.g., https://sarimanage-render.onrender.com
+import NotificationBell from "../components/NotificationBell";
 
+
+const BASE_URL = process.env.REACT_APP_API_URL; // e.g., https://sarimanage-render.onrender.com
+
+const EXPIRY_WARNING_DAYS = 14;
+
+const defaultCategories = [
+  "Beverages & Drinks",
+  "Snacks & Chips",
+  "Instant Foods",
+  "Condiments & Sauces",
+  "Dairy & Eggs",
+  "Personal Care",
+  "Cleaning Supplies",
+  "Frozen Foods",
+];
 
 export default function Stocks({ setPage }) {
   const [lowStockItems, setLowStockItems] = useState([]);
@@ -28,6 +43,8 @@ export default function Stocks({ setPage }) {
   const [selling_price, setSellingPrice] = useState("");
   const [buying_price, setBuyingPrice] = useState("");
   const [lowStock, setLowStock] = useState("");
+  const [expiringItems, setExpiringItems] = useState([]);
+
   const [manufacturing_date, setManufacturingDate] = useState("");
   const [expiry_date, setExpiryDate] = useState("");
   const [selectedStock, setSelectedStock] = useState(null);
@@ -36,6 +53,7 @@ export default function Stocks({ setPage }) {
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [modalMode, setModalMode] = useState("add");
 
+  const [flagFilter, setFlagFilter] = useState("");
 
   //Fetch all stocks from backend
   useEffect(() => {
@@ -91,10 +109,32 @@ export default function Stocks({ setPage }) {
   }, [stocks]);
 
   useEffect(() => {
-    const uniqueCategories = [
+    const today = new Date();
+
+    const expiring = stocks.filter((stock) => {
+      if (!stock.expiry_date) return false;
+
+      const expiry = new Date(stock.expiry_date);
+
+      // Calculate difference in days
+      const diffTime = expiry - today;
+      const diffDays = diffTime / (1000 * 60 * 60 * 24);
+
+      return diffDays <= EXPIRY_WARNING_DAYS && diffDays >= 0;
+    });
+
+    setExpiringItems(expiring);
+  }, [stocks]);
+
+  useEffect(() => {
+    const uniqueStockCategories = [
       ...new Set(stocks.map((stock) => stock.category).filter(Boolean)),
     ];
-    setCategories(uniqueCategories);
+
+    const allCategories = [
+      ...new Set([...defaultCategories, ...uniqueStockCategories]),
+    ];
+    setCategories(allCategories);
   }, [stocks]);
 
   // Save stock to backend
@@ -117,6 +157,9 @@ export default function Stocks({ setPage }) {
 
     if (productImage) {
       formData.append("image", productImage);
+    }
+    if (!categories.includes(category)) {
+      setCategories([...categories, category]);
     }
 
     try {
@@ -190,20 +233,33 @@ export default function Stocks({ setPage }) {
     setProductImage(null);
   };
 
-  const filteredStocks = stocks.filter((stock) => {
-    const searchLower = search.toLowerCase();
-    return (
-      String(stock.name || "")
-        .toLowerCase()
-        .includes(searchLower) ||
-      String(stock.barcode || "")
-        .toLowerCase()
-        .includes(searchLower) ||
-      String(stock.category || "")
-        .toLowerCase()
-        .includes(searchLower)
-    );
-  });
+  const filteredStocks = stocks
+    .filter((stock) => {
+      const searchLower = search.toLowerCase();
+      return (
+        String(stock.name || "")
+          .toLowerCase()
+          .includes(searchLower) ||
+        String(stock.barcode || "")
+          .toLowerCase()
+          .includes(searchLower) ||
+        String(stock.category || "")
+          .toLowerCase()
+          .includes(searchLower)
+      );
+    })
+    .filter((stock) => {
+      if (flagFilter === "lowStock") {
+        return Number(stock.stock) <= Number(stock.lowstock);
+      } else if (flagFilter === "expiring") {
+        const today = new Date();
+        if (!stock.expiry_date) return false;
+        const expiry = new Date(stock.expiry_date);
+        const diffDays = (expiry - today) / (1000 * 60 * 60 * 24);
+        return diffDays <= EXPIRY_WARNING_DAYS && diffDays >= 0;
+      }
+      return true; // no filter
+    });
 
   const handleEnterFocus = (e) => {
     if (e.key === "Enter") {
@@ -226,45 +282,10 @@ export default function Stocks({ setPage }) {
   return (
     <div>
       {/* Topbar */}
-      <div className={styles.topbar}>
-        <h2>Stocks</h2>
-
-        {/* Notification Bell */}
-        <div className={styles.notifWrapper}>
-          <button
-            className={styles.notifBell}
-            onClick={() => setShowNotifDropdown(!showNotifDropdown)}
-          >
-            <img
-              src={lowStockItems.length > 0 ? bellAlertIcon : bellIcon}
-              alt="Notifications"
-              className={`${styles.notifIcon} ${
-                lowStockItems.length > 0 ? styles.alertBell : ""
-              }`}
-            />
-
-            {lowStockItems.length > 0 && (
-              <span className={styles.notifCount}>{lowStockItems.length}</span>
-            )}
-          </button>
-
-          {showNotifDropdown && (
-            <div className={styles.notifDropdown}>
-              {lowStockItems.length === 0 ? (
-                <p>No low stock items</p>
-              ) : (
-                <ul>
-                  {lowStockItems.map((item, i) => (
-                    <li key={i}>
-                      <strong>{item.name}</strong> - {item.stock} left
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+    <div className={styles.topbar}>
+  <h2>Stocks</h2>
+  <NotificationBell />
+</div>
 
       <main className={styles.main}>
         {/* Page Header + Search */}
@@ -323,6 +344,27 @@ export default function Stocks({ setPage }) {
           </div>
 
           {/*<h1>Stocks</h1>*/}
+        </div>
+
+        <div className={styles.filterBar}>
+          <button
+            className={flagFilter === "" ? styles.activeFilter : ""}
+            onClick={() => setFlagFilter("")}
+          >
+            All
+          </button>
+          <button
+            className={flagFilter === "lowStock" ? styles.activeFilter : ""}
+            onClick={() => setFlagFilter("lowStock")}
+          >
+            Low Stock
+          </button>
+          <button
+            className={flagFilter === "expiring" ? styles.activeFilter : ""}
+            onClick={() => setFlagFilter("expiring")}
+          >
+            Near Expiry
+          </button>
         </div>
 
         {/* Stocks Grid */}
@@ -557,7 +599,10 @@ export default function Stocks({ setPage }) {
                 </div>
               </div>
 
-              <div className={styles.formGroupNew}>
+              <div
+                className={styles.formGroupNew}
+                style={{ position: "relative" }}
+              >
                 <label>Category</label>
                 <input
                   type="text"
@@ -566,18 +611,81 @@ export default function Stocks({ setPage }) {
                       ? category
                       : selectedStock?.category || ""
                   }
-                  onChange={(e) =>
-                    modalMode === "add"
-                      ? setCategory(e.target.value)
-                      : setSelectedStock({
-                          ...selectedStock,
-                          category: e.target.value,
-                        })
-                  }
-                  onKeyDown={handleEnterFocus}
-                  placeholder="Category"
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (modalMode === "add") setCategory(value);
+                    else
+                      setSelectedStock({
+                        ...selectedStock,
+                        category: value,
+                      });
+
+                    // Show dropdown if input not empty
+                    setShowCategoryDropdown(value.length > 0);
+                  }}
+                  onFocus={() => setShowCategoryDropdown(true)}
+                  onBlur={() =>
+                    setTimeout(() => setShowCategoryDropdown(false), 150)
+                  } // slight delay to allow click
+                  placeholder="Select or type category"
                   required
                 />
+
+                {/* Dropdown */}
+                {showCategoryDropdown && (
+                  <ul
+                    className={styles["category-dropdown"]}
+                    style={{
+                      position: "absolute",
+                      top: "100%",
+                      left: 0,
+                      width: "100%",
+                      background: "#fff",
+                      border: "1px solid #ccc",
+                      borderRadius: "8px",
+                      maxHeight: "150px",
+                      overflowY: "auto",
+                      zIndex: 1000,
+                      marginTop: "4px",
+                      padding: "0",
+                      listStyle: "none",
+                      textAlign: "left",
+                    }}
+                  >
+                    {categories
+                      .filter((cat) =>
+                        cat
+                          .toLowerCase()
+                          .includes(
+                            (modalMode === "add"
+                              ? category
+                              : selectedStock?.category || ""
+                            ).toLowerCase()
+                          )
+                      )
+                      .map((cat, i) => (
+                        <li
+                          key={i}
+                          onMouseDown={(e) => e.preventDefault()} // prevent input blur
+                          onClick={() => {
+                            if (modalMode === "add") setCategory(cat);
+                            else
+                              setSelectedStock({
+                                ...selectedStock,
+                                category: cat,
+                              });
+                            setShowCategoryDropdown(false);
+                          }}
+                          style={{
+                            padding: "8px 12px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {cat}
+                        </li>
+                      ))}
+                  </ul>
+                )}
               </div>
 
               <div className={styles["form-row"]}>

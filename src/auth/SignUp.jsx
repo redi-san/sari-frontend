@@ -20,11 +20,16 @@ function SignUp() {
     mobileNumber: "",
     password: "",
     confirmPassword: "",
+    privacyPolicy: false,
   });
 
   const [showPassword, setShowPassword] = useState(false);
   const [passwordError, setPasswordError] = useState("");
   const [showModal, setShowModal] = useState(false);
+
+  const [showPolicy, setShowPolicy] = useState(false);
+
+  const [policyError, setPolicyError] = useState("");
 
   const handleChange = (e) => {
     setFormData({
@@ -39,50 +44,54 @@ function SignUp() {
     return regex.test(password);
   };
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  if (!validatePassword(formData.password)) {
-    setPasswordError(
-      "Password must be 12–16 chars, include uppercase, lowercase, number, and special character."
-    );
-    return;
-  }
-  if (formData.password !== formData.confirmPassword) {
-    setPasswordError("Passwords do not match.");
-    return;
-  }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validatePassword(formData.password)) {
+      setPasswordError(
+        "Password must be 12–16 chars, include uppercase, lowercase, number, and special character."
+      );
+      return;
+    }
+    if (formData.password !== formData.confirmPassword) {
+      setPasswordError("Passwords do not match.");
+      return;
+    }
 
-  try {
-    const userCredential = await createUserWithEmailAndPassword(
-      auth,
-      formData.email,
-      formData.password
-    );
+    if (!formData.privacyPolicy) {
+      setPolicyError("You must agree to the Data Privacy Policy.");
+      return;
+    }
 
-    const user = userCredential.user;
-    await updateProfile(user, {
-      displayName: `${formData.firstName} ${formData.lastName}`,
-    });
+    try {
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        formData.email,
+        formData.password
+      );
 
-    await axios.post(`${BASE_URL}/users`, {
-      firebase_uid: user.uid,
-      name: formData.firstName,
-      last_name: formData.lastName,
-      email: user.email,
-      store_name: formData.storeName,
-      mobile_number: formData.mobileNumber,
-    });
+      const user = userCredential.user;
+      await updateProfile(user, {
+        displayName: `${formData.firstName} ${formData.lastName}`,
+      });
 
-    // ✅ Clear error
-    setPasswordError("");
+      await axios.post(`${BASE_URL}/users`, {
+        firebase_uid: user.uid,
+        name: formData.firstName,
+        last_name: formData.lastName,
+        email: user.email,
+        store_name: formData.storeName,
+        mobile_number: formData.mobileNumber,
+      });
 
-    // ✅ Automatically navigate to Home
-    navigate("/home");
-  } catch (err) {
-    setPasswordError(err.message);
-  }
-};
+      // ✅ Clear error
+      setPasswordError("");
 
+      // ✅ Automatically navigate to Home
+      navigate("/home");
+    } catch (err) {
+      setPasswordError(err.message);
+    }
+  };
 
   const handleContinue = () => {
     setShowModal(false);
@@ -211,6 +220,25 @@ const handleSubmit = async (e) => {
             )}
           </div>
 
+          <div className={styles.termsRow}>
+            <input
+              type="checkbox"
+              id="privacyPolicy"
+              checked={formData.privacyPolicy || false}
+              onChange={(e) =>
+                setFormData({ ...formData, privacyPolicy: e.target.checked })
+              }
+            />
+            <label htmlFor="privacyPolicy">
+              I agree to the{" "}
+              <span className={styles.link} onClick={() => setShowPolicy(true)}>
+                Data Privacy Policy
+              </span>
+            </label>
+          </div>
+
+          {policyError && <p className={styles.errorMessage}>{policyError}</p>}
+
           <button type="submit" className={styles.btn}>
             Sign Up
           </button>
@@ -220,6 +248,32 @@ const handleSubmit = async (e) => {
           Already have an account? <a href="/login">Login</a>
         </p>
       </div>
+
+      {/* DATA PRIVACY POLICY MODAL */}
+      {showPolicy && (
+        <div className={styles.modal}>
+          <div className={styles.modalContent}>
+            <h3>Data Privacy Policy</h3>
+            <p style={{ textAlign: "left", fontSize: "0.9rem" }}>
+              By using Sari Manage, you consent to the collection and storage of
+              your basic profile information (first name, last name, store name,
+              email, mobile number) and operational data such as customer debts,
+              transaction records, and inventory data.
+              <br />
+              <br />
+              This information is used solely for store management features. We
+              do not sell or share your data with third parties.
+            </p>
+
+            <button
+              className={styles.continue}
+              onClick={() => setShowPolicy(false)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
 
       {showModal && (
         <div className={styles.modal}>

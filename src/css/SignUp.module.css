@@ -206,3 +206,20 @@
   display: block;   /* needed for margin auto to work */
   box-sizing: border-box;
 }
+
+.link {
+  color: #007bff;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+
+.termsRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 0.5rem;
+  text-align: left;
+  justify-content: flex-start;
+}
