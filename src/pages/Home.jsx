@@ -218,23 +218,24 @@ const [orders, setOrders] = useState([]);
         {/* Monthly Sales Chart */}
   <MonthlySalesChart orders={orders} />
 
-      <h2 className={styles.sectionTitle}>Recommended Products</h2>
-      {recommendedProducts.length === 0 ? (
-        <p>No recommendations yet</p>
-      ) : (
-        <ul className={styles.recommendationList}>
-          {recommendedProducts.map((p, idx) => (
-            <li key={idx} className={styles.recommendationItem}>
-              <Link to="/reports">
-                <span className={styles.productName}>{p.name}</span>
-                <span className={styles.productSales}>
-                  ₱{p.totalSales.toFixed(2)}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+<h2 className={`${styles.sectionTitle} ${styles.recommendedTitle}`}>Recommended Products</h2>
+<div className={styles.recommendationSection}>
+  {recommendedProducts.length === 0 ? (
+    <p>No recommendations yet</p>
+  ) : (
+    <ul className={styles.recommendationList}>
+      {recommendedProducts.map((p, idx) => (
+        <li key={idx} className={styles.recommendationItem}>
+          <Link to="/reports">
+            <span className={styles.productName}>{p.name}</span>
+            <span className={styles.productSales}>₱{p.totalSales.toFixed(2)}</span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  )}
+</div>
+
 
       <BottomNav />
     </div>

@@ -342,3 +342,10 @@
     margin-left: 5px;    /* less margin on smaller screens */
   }
 }
+
+.recommendationSection {
+  width: 100%;
+  display: flex;           /* make it a flex container */
+  justify-content: center; /* center the list horizontally */
+  margin-bottom: 50px;     /* space below */
+}

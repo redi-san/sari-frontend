@@ -9,8 +9,8 @@ const MonthlySalesChart = ({ orders }) => {
     orders.forEach((order) => {
       const datePart = order.order_number.split("-")[0];
       const month = parseInt(datePart.slice(0, 2), 10) - 1;
-      const day = parseInt(datePart.slice(2, 4), 10);
-      const yearOrder = parseInt(datePart.slice(4), 10);
+      //const day = parseInt(datePart.slice(2, 4), 10);
+      //const yearOrder = parseInt(datePart.slice(4), 10);
 
       const orderValue = order.products.reduce((sum, p) => {
         const qty = parseFloat(p.quantity) || 0;
@@ -58,7 +58,13 @@ const MonthlySalesChart = ({ orders }) => {
   const pathD = points.map((p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`)).join(" ");
 
   return (
-    <div style={{ margin: "20px 0" }}>
+<div
+  style={{
+    margin: "20px auto",   // auto left/right margin centers it
+    maxWidth: "600px",     // optional, to control chart width
+    textAlign: "center",   // centers inline elements
+  }}
+>
       {/* Actual / Forecast Buttons */}
       <div style={{ display: "flex", justifyContent: "center", gap: "10px", marginBottom: "15px" }}>
         <button
